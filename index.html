@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="Travel Lah!" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="description" content="A private, local-first travel console for itinerary, tickets, packing and trip money." />
-  <title>Travel Lah! V1 RC</title>
+  <title>Travel Lah! V1.1</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
@@ -58,6 +58,6 @@
   <dialog id="ticketDialog" class="modal"><form class="modal-sheet" id="ticketForm"><div class="modal-head"><h3 id="ticketDialogTitle">Add ticket</h3><button type="button" class="dialogClose">×</button></div><input id="ticketEditId" type="hidden" /><div class="form-grid two"><label class="field"><span>Type</span><select id="ticketType"><option>FLIGHT</option><option>EVENT</option><option>TRAIN</option><option>BUS</option><option>RETURN</option><option>OTHER</option></select></label><label class="field"><span>Date</span><input id="ticketDate" type="date" required /></label></div><label class="field"><span>Title</span><input id="ticketTitle" type="text" placeholder="KUL → BKK" required /></label><div class="form-grid two"><label class="field"><span>Time</span><input id="ticketTime" type="time" /></label><label class="field"><span>Seat</span><input id="ticketSeat" type="text" placeholder="14A" /></label></div><label class="field"><span>Place / terminal</span><input id="ticketPlace" type="text" placeholder="KLIA2 / Impact Arena" /></label><label class="field"><span>Booking reference</span><input id="ticketCode" type="text" placeholder="Optional" /></label><label class="field file-field"><span>QR / ticket image</span><input id="ticketQr" type="file" accept="image/*" /><small id="ticketQrHint">Optional · image is stored only in this browser</small></label><div class="dialog-actions"><button type="button" id="deleteTicketBtn" class="danger-btn hidden">Delete</button><button type="submit" class="primary-btn">Save ticket</button></div></form></dialog>
   <dialog id="qrDialog" class="modal qr-modal"><form method="dialog" class="modal-sheet qr-sheet"><div class="modal-head"><h3 id="qrTitle">Ticket</h3><button value="cancel">×</button></div><img id="qrImage" class="qr-image hidden" alt="Ticket QR" /><div id="fakeQr" class="fake-qr" aria-label="示意 QR code"></div><b id="qrCodeText">CODE</b><small id="qrMeta">Tap Done when finished.</small><button value="cancel" class="primary-btn wide">Done</button></form></dialog>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js"></script>
+  <script src="app.js"></script>\n  <script src="cloud-auth.js"></script>
 </body>
 </html>
