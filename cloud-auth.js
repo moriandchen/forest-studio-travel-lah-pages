@@ -1,12 +1,18 @@
 (()=>{
 'use strict';
 const CLOUD_SESSION_LS='travelLahCloudSessionV11';
-const CLOUD_META_LS='travelLahCloudMetaV11';\nconst DATA_LS='travelLahV1';\nconst RECOVERY_LS='travelLahV1Recovery';
+const CLOUD_META_LS='travelLahCloudMetaV11';
+const DATA_LS='travelLahV1';
+const RECOVERY_LS='travelLahV1Recovery';
 const SUPABASE_URL='https://kxehariqixdqmtyeezrb.supabase.co';
 const SUPABASE_KEY='sb_publishable_-fTWxWaGAINGBQAePgh72A_CFr86NU7';
 const HAD_LOCAL_AT_START=!!localStorage.getItem(DATA_LS);
 let session=loadSession(), meta=loadMeta(), remoteSnapshot=null, syncTimer=null;
-const originalSave=window.save;\nconst $=s=>document.querySelector(s);\nconst note=m=>{try{if(typeof window.toast==='function')window.note(m);else console.log(m)}catch{console.log(m)}};\nfunction payloadNow(){try{return JSON.parse(localStorage.getItem(DATA_LS))||null}catch{return null}}\nfunction snapshotLocal(){try{const current=payloadNow();if(current)localStorage.setItem(RECOVERY_LS,JSON.stringify({savedAt:new Date().toISOString(),data:current}))}catch{}}
+const originalSave=window.save;
+const $=s=>document.querySelector(s);
+const note=m=>{try{if(typeof window.toast==='function')window.toast(m);else console.log(m)}catch{console.log(m)}};
+function payloadNow(){try{return JSON.parse(localStorage.getItem(DATA_LS))||null}catch{return null}}
+function snapshotLocal(){try{const current=payloadNow();if(current)localStorage.setItem(RECOVERY_LS,JSON.stringify({savedAt:new Date().toISOString(),data:current}))}catch{}}
 
 function loadSession(){try{return JSON.parse(localStorage.getItem(CLOUD_SESSION_LS))||null}catch{return null}}
 function loadMeta(){try{return {...{revision:0,dirty:false,lastSyncedAt:'',conflict:false},...(JSON.parse(localStorage.getItem(CLOUD_META_LS))||{})}}catch{return {revision:0,dirty:false,lastSyncedAt:'',conflict:false}}}
@@ -15,11 +21,10 @@ function storeMeta(){localStorage.setItem(CLOUD_META_LS,JSON.stringify(meta))}
 function clearCloud(){session=null;meta={revision:0,dirty:false,lastSyncedAt:'',conflict:false};remoteSnapshot=null;localStorage.removeItem(CLOUD_SESSION_LS);localStorage.removeItem(CLOUD_META_LS);updateUI()}
 function schedule(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncCloud(),900)}
 
-save=function(){
+window.save=function(){
   originalSave();
   if(session){meta.dirty=true;storeMeta();updateUI();schedule();}
 };
-window.save=save;
 
 function injectUI(){
   const style=document.createElement('style');
@@ -110,10 +115,11 @@ async function updateRemote(baseRevision,force=false){
   const row=rows[0];meta={revision:Number(row.revision),dirty:false,lastSyncedAt:row.updated_at||new Date().toISOString(),conflict:false};remoteSnapshot=null;storeMeta();updateUI();return true;
 }
 function applyRemote(row){
-  saveRecoverySnapshot();
-  data=normalizeData(row.payload);selectedTodayDate='';activePlaceFilter='All';
-  localStorage.setItem(LS,JSON.stringify(data));
-  meta={revision:Number(row.revision||1),dirty:false,lastSyncedAt:row.updated_at||new Date().toISOString(),conflict:false};remoteSnapshot=null;storeMeta();render();updateUI();
+  snapshotLocal();
+  localStorage.setItem(DATA_LS,JSON.stringify(row.payload));
+  meta={revision:Number(row.revision||1),dirty:false,lastSyncedAt:row.updated_at||new Date().toISOString(),conflict:false};
+  remoteSnapshot=null;storeMeta();updateUI();
+  location.reload();
 }
 async function syncCloud({manual=false}={}){
   if(!session||!navigator.onLine)return updateUI();
@@ -143,6 +149,7 @@ async function syncCloud({manual=false}={}){
 }
 async function signIn(email,password){
   updateUI('syncing');
+  if(!payloadNow()&&typeof originalSave==='function')originalSave();
   const j=await auth('/auth/v1/token?grant_type=password',{email,password});
   session={accessToken:j.access_token,refreshToken:j.refresh_token,userId:j.user?.id,expiresAt:Date.now()+Number(j.expires_in||3600)*1000};
   meta={revision:0,dirty:HAD_LOCAL_AT_START,lastSyncedAt:'',conflict:false};storeSession();storeMeta();await syncCloud({manual:true});
