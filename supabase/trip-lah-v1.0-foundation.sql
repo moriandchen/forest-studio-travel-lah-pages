@@ -343,4 +343,98 @@ begin
   end loop;
 end $$;
 
+-- Immutable audit trail for important trip and financial records.
+-- No client-side INSERT/UPDATE/DELETE permission; rows are written by this trigger only.
+create table if not exists public.trip_lah_audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  actor_id uuid,
+  entity_table text not null,
+  entity_id uuid not null,
+  action text not null check (action in ('insert','update','delete')),
+  before_data jsonb,
+  after_data jsonb,
+  created_at timestamptz not null default now()
+);
+alter table public.trip_lah_audit_logs enable row level security;
+revoke all on table public.trip_lah_audit_logs from anon, authenticated;
+grant select on table public.trip_lah_audit_logs to authenticated;
+drop policy if exists trip_lah_audit_logs_owner_select on public.trip_lah_audit_logs;
+create policy trip_lah_audit_logs_owner_select on public.trip_lah_audit_logs
+  for select to authenticated using (owner_id = (select auth.uid()));
+create index if not exists trip_lah_audit_logs_trip_created_idx
+  on public.trip_lah_audit_logs(trip_id, created_at desc);
+create index if not exists trip_lah_audit_logs_owner_created_idx
+  on public.trip_lah_audit_logs(owner_id, created_at desc);
+
+create or replace function private.trip_lah_write_audit_log()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_row jsonb;
+  v_before jsonb;
+  v_after jsonb;
+  v_trip_id uuid;
+  v_owner_id uuid;
+  v_entity_id uuid;
+  v_action text;
+begin
+  if tg_op = 'DELETE' then
+    v_row := pg_catalog.to_jsonb(old);
+    v_before := v_row;
+    v_after := null;
+    v_action := 'delete';
+  elsif tg_op = 'UPDATE' then
+    v_row := pg_catalog.to_jsonb(new);
+    v_before := pg_catalog.to_jsonb(old);
+    v_after := v_row;
+    v_action := 'update';
+  else
+    v_row := pg_catalog.to_jsonb(new);
+    v_before := null;
+    v_after := v_row;
+    v_action := 'insert';
+  end if;
+
+  v_owner_id := (v_row ->> 'owner_id')::uuid;
+  v_entity_id := (v_row ->> 'id')::uuid;
+  v_trip_id := coalesce((v_row ->> 'trip_id')::uuid, v_entity_id);
+
+  insert into public.trip_lah_audit_logs
+    (trip_id, owner_id, actor_id, entity_table, entity_id, action, before_data, after_data)
+  values
+    (v_trip_id, v_owner_id, auth.uid(), tg_table_name, v_entity_id, v_action, v_before, v_after);
+
+  if tg_op = 'DELETE' then return old; else return new; end if;
+end;
+$;
+
+do $
+declare
+  t text;
+begin
+  foreach t in array array[
+    'trip_lah_trips',
+    'trip_lah_members',
+    'trip_lah_funds',
+    'trip_lah_expenses',
+    'trip_lah_expense_splits',
+    'trip_lah_fund_transactions',
+    'trip_lah_bookings',
+    'trip_lah_itinerary_items',
+    'trip_lah_settlements'
+  ]
+  loop
+    execute format('drop trigger if exists %I on public.%I', t || '_audit_log', t);
+    execute format(
+      'create trigger %I after insert or update or delete on public.%I for each row execute function private.trip_lah_write_audit_log()',
+      t || '_audit_log', t
+    );
+  end loop;
+end $;
+
 notify pgrst, 'reload schema';
