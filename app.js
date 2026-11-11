@@ -482,7 +482,7 @@ function backupFilename(){
 function exportBackup(){
   syncActiveTripSnapshot();
   const exportedAt=new Date().toISOString();
-  const payload={app:'Travel Lah!',backupVersion:2,exportedAt,data:{...data,lastBackup:exportedAt,version:4}};
+  const payload={app:'Trip Lah!',backupVersion:2,exportedAt,data:{...data,lastBackup:exportedAt,version:4}};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=backupFilename();document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   data.lastBackup=exportedAt;localStorage.setItem(LS,JSON.stringify(data));render();toast('Trip backup downloaded');
@@ -497,7 +497,7 @@ async function importBackup(file){
   try{
     const raw=JSON.parse(await file.text()),incoming=raw && raw.data ? raw.data : raw;
     if(!incoming || (!incoming.trip && !Array.isArray(incoming.trips)) || (!Array.isArray(incoming.tickets) && !Array.isArray(incoming.trips))) throw new Error('Invalid backup');
-    if(!confirm(`Restore backup for ${incoming.trip.city||'this trip'}?\n\nYour current Travel Lah! data will be kept as an automatic recovery snapshot.`)) return;
+    if(!confirm(`Restore backup for ${incoming.trip.city||'this trip'}?\n\nYour current Trip Lah! data will be kept as an automatic recovery snapshot.`)) return;
     saveRecoverySnapshot();
     data=normalizeData(incoming);selectedTodayDate='';activePlaceFilter='All';save();toast('Trip backup restored');showView('home');
   }catch{toast('Could not import this backup')}
@@ -506,7 +506,7 @@ function restoreRecovery(){
   try{
     const snap=JSON.parse(localStorage.getItem(RECOVERY_LS));
     if(!snap?.data) return toast('No recovery snapshot');
-    if(!confirm('Undo the last import and restore your previous Travel Lah! data?')) return;
+    if(!confirm('Undo the last import and restore your previous Trip Lah! data?')) return;
     data=normalizeData(snap.data);selectedTodayDate='';activePlaceFilter='All';localStorage.removeItem(RECOVERY_LS);save();toast('Previous trip restored');showView('home');
   }catch{toast('Could not restore recovery snapshot')}
 }
@@ -619,7 +619,7 @@ qs('#cloudStatusBtn')?.addEventListener('click',()=>{if(!cloudSession)qs('#cloud
 qs('#cloudSetupBtn')?.addEventListener('click',()=>{if(!cloudSession)qs('#cloudDialog').showModal();else syncCloud({manual:true})});
 qs('#cloudForm')?.addEventListener('submit',async e=>{e.preventDefault();const email=qs('#cloudEmail').value.trim(),password=qs('#cloudPassword').value;if(!email||!password)return;try{updateCloudUI('syncing');await signInCloud(email,password);qs('#cloudPassword').value='';qs('#cloudDialog').close();toast('Forest Studio Cloud connected')}catch(err){console.error(err);toast(err.message||'Could not sign in')}});
 qs('#cloudSyncNowBtn')?.addEventListener('click',()=>syncCloud({manual:true}));
-qs('#cloudDisconnectBtn')?.addEventListener('click',()=>{if(confirm('Disconnect Travel Lah! from Forest Studio Cloud on this device?\n\nYour local trip data will stay here.'))disconnectCloud()});
+qs('#cloudDisconnectBtn')?.addEventListener('click',()=>{if(confirm('Disconnect Trip Lah! from Forest Studio Cloud on this device?\n\nYour local trip data will stay here.'))disconnectCloud()});
 qs('#cloudUseCloudBtn')?.addEventListener('click',async()=>{try{const remote=cloudRemoteSnapshot||await readCloud();if(!remote)return toast('No cloud copy found');if(!confirm('Replace this device copy with the cloud copy?\n\nYour current local copy will be kept as a recovery snapshot.'))return;applyCloudPayload(remote);toast('Cloud copy loaded')}catch{toast('Could not load cloud copy')}});
 qs('#cloudForcePushBtn')?.addEventListener('click',async()=>{try{const remote=cloudRemoteSnapshot||await readCloud();if(!remote)return; if(!confirm('Overwrite the cloud copy with this device copy?'))return;const ok=await updateCloudCopy(Number(remote.revision||0),true);if(ok)toast('This device copy is now in cloud')}catch{toast('Could not update cloud copy')}});
 window.addEventListener('online',()=>{updateCloudUI();scheduleCloudSync()});
@@ -638,11 +638,11 @@ function updateInstallUI(){
   status.textContent=isIOS()?'Safari: Share → Add to Home Screen':(deferredInstallPrompt?'Ready to install':'Add it to your Home Screen');
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;updateInstallUI()});
-window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;updateInstallUI();toast('Travel Lah! installed')});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;updateInstallUI();toast('Trip Lah! installed')});
 qs('#installAppBtn').addEventListener('click',async()=>{
-  if(isStandalone()) return toast('Travel Lah! is already installed');
+  if(isStandalone()) return toast('Trip Lah! is already installed');
   if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;updateInstallUI();return}
-  if(isIOS()) return alert('On iPhone / iPad:\n\n1. Open Travel Lah! in Safari\n2. Tap the Share button\n3. Choose “Add to Home Screen”\n4. Tap Add');
+  if(isIOS()) return alert('On iPhone / iPad:\n\n1. Open Trip Lah! in Safari\n2. Tap the Share button\n3. Choose “Add to Home Screen”\n4. Tap Add');
   alert('Open your browser menu and choose “Install app” or “Add to Home screen”.');
 });
 updateInstallUI();
@@ -660,7 +660,7 @@ async function initPWA(){
 }
 initPWA();
 
-qs('#resetDemo').addEventListener('click',()=>{if(!confirm('Reset Travel Lah! to the sample trip? Your current local data will be replaced.'))return;saveRecoverySnapshot();localStorage.removeItem(LS);data=normalizeData(seed);activePlaceFilter='All';selectedTodayDate='';save();toast('Demo reset · recovery snapshot saved')});
+qs('#resetDemo').addEventListener('click',()=>{if(!confirm('Reset Trip Lah! to the sample trip? Your current local data will be replaced.'))return;saveRecoverySnapshot();localStorage.removeItem(LS);data=normalizeData(seed);activePlaceFilter='All';selectedTodayDate='';save();toast('Demo reset · recovery snapshot saved')});
 window.addEventListener('pageshow',()=>{render();updateInstallUI()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){renderTrip();if(cloudSession)syncCloud()}});
 render();
