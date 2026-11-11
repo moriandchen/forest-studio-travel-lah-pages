@@ -43,3 +43,31 @@ button{touch-action:manipulation}
 
 /* Travel expense ledger */
 .expense-insights{display:grid;gap:10px;margin-top:14px}.insight-section{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}.insight-heading{font-size:9px;font-weight:800;letter-spacing:.13em;color:var(--muted);margin-bottom:10px}.expense-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.expense-category,.daily-expense-list>div{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f7fafc;border-radius:12px;padding:10px;font-size:11px}.expense-category span,.daily-expense-list span{color:var(--muted)}.expense-category b,.daily-expense-list b{font-size:11px;white-space:nowrap}.daily-expense-list{display:grid;gap:6px}.expense-list{margin-top:12px}.expense-item{align-items:center;gap:8px}.expense-main{display:flex;align-items:center;gap:10px;min-width:0}.expense-icon{width:36px;height:36px;flex:0 0 36px;border-radius:12px;background:var(--blue-soft);display:grid;place-items:center}.expense-copy{min-width:0}.expense-copy b{display:block;font-size:12px;overflow-wrap:anywhere}.expense-copy small{display:block;margin-top:3px;font-size:10px}.expense-value{text-align:right;flex:0 0 auto}.expense-value>b{display:block;font-size:12px}.expense-value>small{display:block;font-size:9px;margin-top:2px}.expense-value .row-actions{justify-content:flex-end;gap:2px;margin-top:2px}.expense-value .row-actions button{padding:1px 4px;font-size:15px}.field small{display:block;margin-top:5px;font-size:10px}
+
+
+/* Trip Lah! V1.0 · multi-trip foundation */
+.trip-card-list{display:grid;gap:12px;margin-top:16px;max-height:min(58vh,620px);overflow:auto;padding:1px 2px 8px}
+.trip-manager-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px}
+.trip-manager-card.is-current{border-color:#a9c6d9;box-shadow:0 8px 22px rgba(63,124,168,.08)}
+.trip-manager-card.is-archived{opacity:.68}
+.trip-card-top{display:flex;align-items:center;justify-content:space-between}
+.trip-card-mark{width:34px;height:34px;border-radius:12px;background:var(--blue-soft);display:grid;place-items:center;color:var(--blue)}
+.trip-card-status{font-size:9px;letter-spacing:.12em;font-weight:800;color:var(--muted)}
+.trip-manager-card h4{font-size:18px;margin:12px 0 5px}
+.trip-manager-card p{font-size:11px;color:var(--muted);margin:0;line-height:1.5}
+.trip-card-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;color:var(--muted);font-size:10px}
+.trip-card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.trip-card-actions .primary-btn,.trip-card-actions .soft-btn{padding:9px 11px;font-size:10px}
+.trip-card-actions .mini-link{margin-left:auto}
+.member-list{display:grid;gap:8px;margin-top:18px}
+.member-row{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid var(--line);border-radius:15px;padding:12px}
+.member-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);font-weight:800}
+.member-row>div:nth-child(2){flex:1;min-width:0}
+.member-row b{display:block;font-size:12px}
+.member-row small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.member-actions{display:flex;gap:8px}
+.member-actions button{border:0;background:transparent;color:var(--blue);font-size:10px;padding:5px}
+.member-actions button:last-child{color:#a56a6a}
+#currenciesFields{margin-top:8px}
+#currenciesFields .field input,#currenciesFields .field select{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px;margin-top:7px;background:#fff;color:var(--ink)}
+@media(min-width:760px){.trip-card-list{max-height:62vh}}
