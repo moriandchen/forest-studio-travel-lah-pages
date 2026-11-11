@@ -1,7 +1,7 @@
 {
   "name": "Trip Lah!",
   "short_name": "Trip Lah!",
-  "description": "A private, local-first travel console for itinerary, tickets, packing and trip money.",
+  "description": "A private, local-first workspace for managing multiple trips, travellers and currencies.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
