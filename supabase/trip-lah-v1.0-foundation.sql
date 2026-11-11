@@ -373,7 +373,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $trip_audit$
 declare
   v_row jsonb;
   v_before jsonb;
@@ -411,9 +411,9 @@ begin
 
   if tg_op = 'DELETE' then return old; else return new; end if;
 end;
-$;
+$trip_audit$;
 
-do $
+do $trip_audit$
 declare
   t text;
 begin
@@ -435,6 +435,6 @@ begin
       t || '_audit_log', t
     );
   end loop;
-end $;
+end $trip_audit$;
 
 notify pgrst, 'reload schema';
