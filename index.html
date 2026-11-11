@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#f7fbff" />
-  <meta name="application-name" content="Travel Lah!" />
+  <meta name="application-name" content="Trip Lah!" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Travel Lah!" />
+  <meta name="apple-mobile-web-app-title" content="Trip Lah!" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="description" content="A private, local-first travel console for itinerary, tickets, packing and trip money." />
-  <title>Travel Lah! V1.2 · Travel Expenses</title>
+  <title>Trip Lah! V1.0 · Travel Manager</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
@@ -20,12 +20,12 @@
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <div class="brand-row"><span class="brand-mark">✈</span><strong>Travel Lah!</strong></div>
+        <div class="brand-row"><span class="brand-mark">✈</span><strong>Trip Lah!</strong></div>
         <p id="greeting" class="muted">Good morning, CEO.</p>
       </div>
       <div class="top-actions">
         <button id="cloudStatusBtn" class="ghost-pill cloud-pill" aria-label="Cloud Sync status">☁ Local</button>
-        <button id="modeBtn" class="ghost-pill" aria-label="切換旅行模式">Before Trip</button>
+        <button id="tripSwitcherBtn" class="ghost-pill" type="button">All Trips</button><button id="modeBtn" class="ghost-pill" aria-label="切換旅行模式">Before Trip</button>
       </div>
     </header>
 
@@ -124,7 +124,7 @@
           <button data-open="documents"><span>📄</span><div><b>Documents</b><small>Passport · Insurance · Booking refs</small></div><span>→</span></button>
           <button data-open="gohome"><span>🏠</span><div><b>Go Home Check</b><small>Final room & airport checklist</small></div><span>→</span></button>
           <button id="exportBackupBtn"><span>💾</span><div><b>Export Trip Backup</b><small id="backupStatus">Download everything, including ticket images</small></div><span>↓</span></button>
-          <button id="importBackupBtn"><span>↥</span><div><b>Import Trip Backup</b><small>Restore a Travel Lah! JSON backup</small></div><span>→</span></button>
+          <button id="importBackupBtn"><span>↥</span><div><b>Import Trip Backup</b><small>Restore a Trip Lah! JSON backup</small></div><span>→</span></button>
           <input id="backupFileInput" type="file" accept="application/json,.json" class="hidden" />
           <button id="restoreRecoveryBtn" class="hidden"><span>↶</span><div><b>Undo Last Import</b><small>Restore the automatic safety snapshot</small></div><span>→</span></button>
           <button id="cloudSetupBtn"><span>☁</span><div><b>Cloud Sync</b><small id="cloudMoreStatus">Local only · tap to connect</small></div><span>→</span></button>
@@ -243,6 +243,9 @@
     </form>
   </dialog>
 
+  <dialog id="tripsDialog" class="modal"><div class="modal-sheet"><div class="modal-head"><div><span class="eyebrow">YOUR JOURNEYS</span><h3>All Trips</h3></div><button type="button" class="dialogClose">×</button></div><p class="cloud-help">Each trip keeps its own members, currencies, plans and records.</p><div id="tripCards" class="trip-card-list"></div><button id="createTripBtn" class="primary-btn wide" type="button">＋ Create New Trip</button></div></dialog>
+  <dialog id="membersDialog" class="modal"><div class="modal-sheet"><div class="modal-head"><div><span class="eyebrow">TRIP TEAM</span><h3 id="membersTitle">Members</h3></div><button type="button" class="dialogClose">×</button></div><div id="membersList" class="member-list"></div><button id="addMemberBtn" class="primary-btn wide" type="button">＋ Add member</button></div></dialog>
+  <dialog id="currenciesDialog" class="modal"><div class="modal-sheet"><div class="modal-head"><div><span class="eyebrow">TRIP SETTINGS</span><h3 id="currenciesTitle">Currencies</h3></div><button type="button" class="dialogClose">×</button></div><p class="cloud-help">Choose one base currency for trip budgets and reporting. Historical expense conversions will be kept separately.</p><div id="currenciesFields"></div><button id="saveCurrenciesBtn" class="primary-btn wide" type="button">Save currencies</button></div></dialog>
   <div id="toast" class="toast" role="status"></div>
   <script src="app.js"></script>
 </body>
