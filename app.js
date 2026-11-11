@@ -64,13 +64,50 @@ function clone(x){ return JSON.parse(JSON.stringify(x)); }
 function uid(prefix){ return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`; }
 function normalizeData(saved){
   const base=clone(seed);
-  if(!saved || ![2,3,4].includes(Number(saved.version))) return base;
-  const merged={...base,...saved,version:4};
-  merged.trip={...base.trip,...(saved.trip||{})};
-  merged.stay={...base.stay,...(saved.stay||{})};
-  for(const key of ['packing','expenses','places','plans','tickets','gohome']) if(!Array.isArray(merged[key])) merged[key]=clone(base[key]);
-  if(!('lastBackup' in merged)) merged.lastBackup='';
-  return merged;
+  const normalizeLegacy=(source)=>{
+    if(!source || ![2,3,4,5].includes(Number(source.version))) return clone(base);
+    const merged={...base,...source,version:4};
+    merged.trip={...base.trip,...(source.trip||{})};
+    merged.stay={...base.stay,...(source.stay||{})};
+    for(const key of ['packing','expenses','places','plans','tickets','gohome']) if(!Array.isArray(merged[key])) merged[key]=clone(base[key]);
+    if(!('lastBackup' in merged)) merged.lastBackup='';
+    return merged;
+  };
+  if(saved && Number(saved.version)===5 && Array.isArray(saved.trips) && saved.trips.length){
+    const merged={...normalizeLegacy(saved),...saved,version:5};
+    merged.trips=saved.trips.map((t,i)=>({
+      id:t.id||('trip_'+i),name:t.name||t.snapshot?.trip?.city||'My Trip',
+      destination:t.destination||t.snapshot?.trip?.country||'',
+      start:t.start||t.snapshot?.trip?.start||'',end:t.end||t.snapshot?.trip?.end||'',
+      baseCurrency:t.baseCurrency||t.snapshot?.baseCurrency||'MYR',
+      budget:Number(t.budget??t.snapshot?.budget??0),
+      status:t.status||'planning',
+      members:Array.isArray(t.members)?t.members:[{id:'owner',name:'You',role:'owner'}],
+      currencies:Array.isArray(t.currencies)&&t.currencies.length?t.currencies:['MYR'],
+      createdAt:t.createdAt||new Date().toISOString(),
+      snapshot:normalizeLegacy(t.snapshot||merged)
+    }));
+    if(!merged.trips.some(t=>t.id===merged.activeTripId)) merged.activeTripId=merged.trips[0].id;
+    const active=merged.trips.find(t=>t.id===merged.activeTripId);
+    if(active){
+      const workspace={trips:merged.trips,activeTripId:active.id};
+      return {...normalizeLegacy(active.snapshot),...merged,...workspace,
+        trip:{...normalizeLegacy(active.snapshot).trip},
+        members:clone(active.members),currencies:clone(active.currencies),baseCurrency:active.baseCurrency};
+    }
+    return merged;
+  }
+  const legacy=normalizeLegacy(saved);
+  const id='trip_legacy';
+  const baseCurrency='MYR';
+  const snapshot=clone(legacy);
+  const record={
+    id,name:legacy.trip.city||'My Trip',destination:legacy.trip.country||'',
+    start:legacy.trip.start||'',end:legacy.trip.end||'',baseCurrency,budget:Number(legacy.budget||0),
+    status:'planning',members:[{id:'owner',name:'You',role:'owner'}],
+    currencies:['MYR','THB','SGD','USD'],createdAt:new Date().toISOString(),snapshot
+  };
+  return {...legacy,version:5,trips:[record],activeTripId:id,members:clone(record.members),currencies:clone(record.currencies),baseCurrency};
 }
 function load(){
   try{
@@ -78,13 +115,32 @@ function load(){
     if(current) return normalizeData(current);
     for(const key of OLD_KEYS){
       const old=JSON.parse(localStorage.getItem(key));
-      if(old){const migrated=normalizeData(old); localStorage.setItem(LS,JSON.stringify(migrated)); return migrated;}
+      if(old){const migrated=normalizeData(old);localStorage.setItem(LS,JSON.stringify(migrated));return migrated;}
     }
-    return clone(seed);
-  }catch{return clone(seed)}
+    return normalizeData(seed);
+  }catch{return normalizeData(seed)}
+}
+function currentSnapshot(){
+  const snap=clone(data);
+  delete snap.trips;delete snap.activeTripId;
+  return snap;
+}
+function syncActiveTripSnapshot(){
+  if(!Array.isArray(data.trips))data.trips=[];
+  let record=data.trips.find(t=>t.id===data.activeTripId);
+  if(!record)return;
+  record.name=data.trip.city||record.name||'My Trip';
+  record.destination=data.trip.country||'';
+  record.start=data.trip.start||'';record.end=data.trip.end||'';
+  record.baseCurrency=data.baseCurrency||'MYR';
+  record.budget=Number(data.budget||0);
+  record.members=clone(Array.isArray(data.members)?data.members:[]);
+  record.currencies=clone(Array.isArray(data.currencies)?data.currencies:['MYR']);
+  record.snapshot=currentSnapshot();
 }
 function save(){
-  data.version=4;
+  data.version=5;
+  syncActiveTripSnapshot();
   localStorage.setItem(LS,JSON.stringify(data));
   if(cloudSession){cloudMeta.dirty=true;saveCloudMeta();scheduleCloudSync();}
   render();
@@ -266,7 +322,109 @@ function renderBackup(){
   qs('#restoreRecoveryBtn')?.classList.toggle('hidden',!hasRecoverySnapshot());
 }
 function renderMode(){qs('#modeBtn').textContent=data.mode;document.body.classList.toggle('travel-mode',data.mode==='Travel Mode')}
-function render(){renderTrip();renderToday();renderPacking();renderMoney();renderPlaces();renderStay();renderTickets();renderGoHome();renderBackup();renderMode()}
+function activeTripRecord(){return data.trips?.find(t=>t.id===data.activeTripId)||null}
+function renderTripManager(){
+  const host=qs('#tripCards');if(!host)return;
+  syncActiveTripSnapshot();
+  host.innerHTML=(data.trips||[]).slice().sort((a,b)=>(a.status==='archived')-(b.status==='archived')||String(b.start).localeCompare(String(a.start))).map(t=>{
+    const active=t.id===data.activeTripId;
+    return `<article class="trip-manager-card ${active?'is-current':''} ${t.status==='archived'?'is-archived':''}">
+      <div class="trip-card-top"><span class="trip-card-mark">✈</span><span class="trip-card-status">${active?'CURRENT':String(t.status||'planning').toUpperCase()}</span></div>
+      <h4>${esc(t.name||'My Trip')}</h4><p>${esc([t.destination,fmtRange(t.start,t.end)].filter(Boolean).join(' · ')||'Dates not set')}</p>
+      <div class="trip-card-meta"><span>👥 ${t.members?.length||0} members</span><span>💱 ${esc(t.baseCurrency||'MYR')}</span></div>
+      <div class="trip-card-actions">
+        <button type="button" class="primary-btn" data-trip-open="${esc(t.id)}">${active?'Open trip':'Switch to trip'}</button>
+        <button type="button" class="soft-btn" data-trip-edit="${esc(t.id)}">Edit</button>
+        <button type="button" class="soft-btn" data-trip-members="${esc(t.id)}">Members</button>
+        <button type="button" class="soft-btn" data-trip-currencies="${esc(t.id)}">Currencies</button>
+        <button type="button" class="mini-link" data-trip-archive="${esc(t.id)}">${t.status==='archived'?'Restore':'Archive'}</button>
+      </div>
+    </article>`;
+  }).join('');
+  host.querySelectorAll('[data-trip-open]').forEach(b=>b.addEventListener('click',()=>switchTrip(b.dataset.tripOpen)));
+  host.querySelectorAll('[data-trip-edit]').forEach(b=>b.addEventListener('click',()=>editTrip(b.dataset.tripEdit)));
+  host.querySelectorAll('[data-trip-members]').forEach(b=>b.addEventListener('click',()=>manageMembers(b.dataset.tripMembers)));
+  host.querySelectorAll('[data-trip-currencies]').forEach(b=>b.addEventListener('click',()=>manageCurrencies(b.dataset.tripCurrencies)));
+  host.querySelectorAll('[data-trip-archive]').forEach(b=>b.addEventListener('click',()=>toggleTripArchive(b.dataset.tripArchive)));
+}
+function openTrips(){renderTripManager();qs('#tripsDialog').showModal()}
+function switchTrip(id){
+  syncActiveTripSnapshot();
+  const record=data.trips.find(t=>t.id===id);if(!record)return;
+  const trips=data.trips, snapshot=clone(record.snapshot||seed);
+  data={...snapshot,version:5,trips,activeTripId:id,members:clone(record.members||[]),currencies:clone(record.currencies||['MYR']),baseCurrency:record.baseCurrency||'MYR'};
+  selectedTodayDate='';activePlaceFilter='All';save();qs('#tripsDialog').close();showView('home');toast('Trip switched');
+}
+function createTrip(){
+  simpleForm('Create a new trip',[
+    {label:'Trip name',name:'name',required:true,placeholder:'Bangkok December 2026'},
+    {label:'Destination',name:'destination',placeholder:'Thailand'},
+    {label:'Start date',name:'start',type:'date',required:true,value:localISO()},
+    {label:'End date',name:'end',type:'date',required:true,value:localISO()},
+    {label:'Base currency',name:'baseCurrency',type:'select',value:'MYR',options:['MYR','THB','SGD','USD','JPY','TWD','EUR','GBP']},
+    {label:'Budget',name:'budget',type:'number',value:'0'}
+  ],f=>{
+    if(f.end<f.start)return toast('End date must be after start date');
+    syncActiveTripSnapshot();
+    const baseCurrency=f.baseCurrency||'MYR',id=uid('trip_');
+    const fresh=clone(seed);
+    fresh.trip={city:f.name.trim(),country:f.destination.trim(),start:f.start,end:f.end};
+    fresh.stay={name:'',address:'',checkin:'',checkout:'',booking:''};
+    fresh.budget=Math.max(0,Number(f.budget||0));
+    fresh.packing=[];fresh.expenses=[];fresh.places=[];fresh.plans=[];fresh.tickets=[];fresh.gohome=[];
+    fresh.members=[{id:uid('member_'),name:'You',role:'owner'}];
+    fresh.currencies=[baseCurrency];fresh.baseCurrency=baseCurrency;
+    const record={id,name:f.name.trim(),destination:f.destination.trim(),start:f.start,end:f.end,baseCurrency,budget:fresh.budget,status:'planning',members:clone(fresh.members),currencies:[baseCurrency],createdAt:new Date().toISOString(),snapshot:fresh};
+    const trips=data.trips;trips.push(record);
+    data={...fresh,version:5,trips,activeTripId:id};
+    selectedTodayDate='';activePlaceFilter='All';save();qs('#tripsDialog').close();showView('home');toast('New trip created');
+  });
+}
+function editTrip(id){
+  const t=data.trips.find(x=>x.id===id);if(!t)return;
+  const wasActive=id===data.activeTripId;
+  simpleForm('Edit trip',[
+    {label:'Trip name',name:'name',value:t.name,required:true},
+    {label:'Destination',name:'destination',value:t.destination||''},
+    {label:'Start date',name:'start',type:'date',value:t.start,required:true},
+    {label:'End date',name:'end',type:'date',value:t.end,required:true},
+    {label:'Base currency',name:'baseCurrency',type:'select',value:t.baseCurrency||'MYR',options:['MYR','THB','SGD','USD','JPY','TWD','EUR','GBP']},
+    {label:'Budget',name:'budget',type:'number',value:t.budget||0}
+  ],f=>{
+    if(f.end<f.start)return toast('End date must be after start date');
+    t.name=f.name.trim();t.destination=f.destination.trim();t.start=f.start;t.end=f.end;t.baseCurrency=f.baseCurrency;t.budget=Math.max(0,Number(f.budget||0));
+    if(!t.currencies.includes(t.baseCurrency))t.currencies.unshift(t.baseCurrency);
+    if(wasActive){data.trip={...data.trip,city:t.name,country:t.destination,start:t.start,end:t.end};data.baseCurrency=t.baseCurrency;data.budget=t.budget;data.currencies=clone(t.currencies);save();}
+    renderTripManager();toast('Trip updated');
+  });
+}
+function toggleTripArchive(id){
+  const t=data.trips.find(x=>x.id===id);if(!t)return;
+  t.status=t.status==='archived'?'planning':'archived';save();renderTripManager();toast(t.status==='archived'?'Trip archived':'Trip restored');
+}
+function manageMembers(id){
+  const t=data.trips.find(x=>x.id===id);if(!t)return;
+  if(id!==data.activeTripId)switchTripForManagement(id);
+  qs('#membersTitle').textContent=(t.name||'Trip')+' · Members';renderMembers();qs('#membersDialog').showModal();
+}
+function switchTripForManagement(id){
+  syncActiveTripSnapshot();
+  const r=data.trips.find(x=>x.id===id);if(!r)return;
+  data={...clone(r.snapshot||seed),version:5,trips:data.trips,activeTripId:id,members:clone(r.members||[]),currencies:clone(r.currencies||['MYR']),baseCurrency:r.baseCurrency||'MYR'};
+}
+function renderMembers(){
+  const host=qs('#membersList'),members=data.members||[];
+  host.innerHTML=members.map(m=>`<div class="member-row"><span class="member-avatar">${m.role==='owner'?'♛':'•'}</span><div><b>${esc(m.name)}</b><small>${m.role==='owner'?'Trip owner':'Traveller'}</small></div><div class="member-actions">${m.role==='owner'?'':`<button type="button" data-member-rename="${esc(m.id)}">Edit</button><button type="button" data-member-remove="${esc(m.id)}">Remove</button>`}</div></div>`).join('');
+  host.querySelectorAll('[data-member-rename]').forEach(b=>b.addEventListener('click',()=>{const m=data.members.find(x=>x.id===b.dataset.memberRename);simpleForm('Edit member',[{label:'Name',name:'name',value:m.name,required:true}],f=>{m.name=f.name.trim();save();renderMembers()})}));
+  host.querySelectorAll('[data-member-remove]').forEach(b=>b.addEventListener('click',()=>{if(!confirm('Remove this traveller from the trip?'))return;data.members=data.members.filter(x=>x.id!==b.dataset.memberRemove);save();renderMembers()}));
+}
+function manageCurrencies(id){
+  if(id!==data.activeTripId)switchTripForManagement(id);
+  qs('#currenciesTitle').textContent=(activeTripRecord()?.name||'Trip')+' · Currencies';
+  qs('#currenciesFields').innerHTML=`<label class="field"><span>Base currency</span><select id="baseCurrencyInput">${['MYR','THB','SGD','USD','JPY','TWD','EUR','GBP'].map(c=>`<option ${c===(data.baseCurrency||'MYR')?'selected':''}>${c}</option>`).join('')}</select></label><label class="field"><span>Enabled currencies (comma separated)</span><input id="currencyListInput" value="${esc((data.currencies||['MYR']).join(', '))}" placeholder="MYR, THB, JPY"></label>`;
+  qs('#currenciesDialog').showModal();
+}
+function render(){renderTrip();renderToday();renderPacking();renderMoney();renderPlaces();renderStay();renderTickets();renderGoHome();renderBackup();renderMode();renderTripManager()}
 
 function simpleForm(title,fields,onSave){
   qs('#simpleTitle').textContent=title;
@@ -275,6 +433,18 @@ function simpleForm(title,fields,onSave){
   qs('#simpleDialog').showModal();
 }
 
+qs('#tripSwitcherBtn').addEventListener('click',openTrips);
+qs('#createTripBtn').addEventListener('click',createTrip);
+qs('#addMemberBtn').addEventListener('click',()=>simpleForm('Add traveller',[{label:'Member name',name:'name',required:true,placeholder:'Foo Zai'}],f=>{data.members.push({id:uid('member_'),name:f.name.trim(),role:'traveller'});save();renderMembers();toast('Member added')}));
+qs('#saveCurrenciesBtn').addEventListener('click',()=>{
+  const base=qs('#baseCurrencyInput').value;
+  const list=[...new Set(qs('#currencyListInput').value.split(',').map(x=>x.trim().toUpperCase()).filter(x=>/^[A-Z]{3}$/.test(x)))];
+  if(!list.includes(base))list.unshift(base);
+  if(!list.length)return toast('Add at least one valid currency');
+  data.baseCurrency=base;data.currencies=list;
+  const record=activeTripRecord();if(record){record.baseCurrency=base;record.currencies=clone(list);}
+  save();qs('#currenciesDialog').close();toast('Currencies updated');
+});
 qs('#modeBtn').addEventListener('click',()=>{data.mode=data.mode==='Before Trip'?'Travel Mode':'Before Trip';save();toast(`${data.mode} enabled`)});
 qs('#editTripBtn').addEventListener('click',()=>simpleForm('Edit trip',[
   {label:'City',name:'city',value:data.trip.city,required:true},{label:'Country',name:'country',value:data.trip.country},{label:'Start date',name:'start',type:'date',value:data.trip.start,required:true},{label:'End date',name:'end',type:'date',value:data.trip.end,required:true}
@@ -328,9 +498,10 @@ function openQr(id){const t=data.tickets.find(x=>x.id===id);if(!t)return;qs('#qr
 
 function backupFilename(){
   const city=(data.trip.city||'Trip').replace(/[^a-z0-9À-ɏ一-鿿_-]+/gi,'-').replace(/^-+|-+$/g,'')||'Trip';
-  return `Travel-Lah-${city}-${data.trip.start||localISO()}-backup.json`;
+  return `Trip-Lah-${city}-${data.trip.start||localISO()}-backup.json`;
 }
 function exportBackup(){
+  syncActiveTripSnapshot();
   const exportedAt=new Date().toISOString();
   const payload={app:'Travel Lah!',backupVersion:2,exportedAt,data:{...data,lastBackup:exportedAt,version:4}};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
@@ -346,7 +517,7 @@ function hasRecoverySnapshot(){
 async function importBackup(file){
   try{
     const raw=JSON.parse(await file.text()),incoming=raw && raw.data ? raw.data : raw;
-    if(!incoming || !incoming.trip || !incoming.trip.start || !incoming.trip.end || !Array.isArray(incoming.tickets)) throw new Error('Invalid backup');
+    if(!incoming || (!incoming.trip && !Array.isArray(incoming.trips)) || (!Array.isArray(incoming.tickets) && !Array.isArray(incoming.trips))) throw new Error('Invalid backup');
     if(!confirm(`Restore backup for ${incoming.trip.city||'this trip'}?\n\nYour current Travel Lah! data will be kept as an automatic recovery snapshot.`)) return;
     saveRecoverySnapshot();
     data=normalizeData(incoming);selectedTodayDate='';activePlaceFilter='All';save();toast('Trip backup restored');showView('home');
@@ -510,7 +681,7 @@ async function initPWA(){
 }
 initPWA();
 
-qs('#resetDemo').addEventListener('click',()=>{if(!confirm('Reset Travel Lah! to the sample trip? Your current local data will be replaced.'))return;saveRecoverySnapshot();localStorage.removeItem(LS);data=clone(seed);activePlaceFilter='All';selectedTodayDate='';save();toast('Demo reset · recovery snapshot saved')});
+qs('#resetDemo').addEventListener('click',()=>{if(!confirm('Reset Travel Lah! to the sample trip? Your current local data will be replaced.'))return;saveRecoverySnapshot();localStorage.removeItem(LS);data=normalizeData(seed);activePlaceFilter='All';selectedTodayDate='';save();toast('Demo reset · recovery snapshot saved')});
 window.addEventListener('pageshow',()=>{render();updateInstallUI()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){renderTrip();if(cloudSession)syncCloud()}});
 render();
