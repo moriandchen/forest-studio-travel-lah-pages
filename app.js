@@ -664,3 +664,4 @@ qs('#resetDemo').addEventListener('click',()=>{if(!confirm('Reset Trip Lah! to t
 window.addEventListener('pageshow',()=>{render();updateInstallUI()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){renderTrip();if(cloudSession)syncCloud()}});
 render();
+openTrips();
