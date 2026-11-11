@@ -394,8 +394,8 @@ function editTrip(id){
     if(f.end<f.start)return toast('End date must be after start date');
     t.name=f.name.trim();t.destination=f.destination.trim();t.start=f.start;t.end=f.end;t.baseCurrency=f.baseCurrency;t.budget=Math.max(0,Number(f.budget||0));
     if(!t.currencies.includes(t.baseCurrency))t.currencies.unshift(t.baseCurrency);
-    if(wasActive){data.trip={...data.trip,city:t.name,country:t.destination,start:t.start,end:t.end};data.baseCurrency=t.baseCurrency;data.budget=t.budget;data.currencies=clone(t.currencies);save();}
-    renderTripManager();toast('Trip updated');
+    if(wasActive){data.trip={...data.trip,city:t.name,country:t.destination,start:t.start,end:t.end};data.baseCurrency=t.baseCurrency;data.budget=t.budget;data.currencies=clone(t.currencies);}
+    save();renderTripManager();toast('Trip updated');
   });
 }
 function toggleTripArchive(id){
@@ -403,9 +403,10 @@ function toggleTripArchive(id){
   t.status=t.status==='archived'?'planning':'archived';save();renderTripManager();toast(t.status==='archived'?'Trip archived':'Trip restored');
 }
 function manageMembers(id){
-  const t=data.trips.find(x=>x.id===id);if(!t)return;
-  if(id!==data.activeTripId)switchTripForManagement(id);
-  qs('#membersTitle').textContent=(t.name||'Trip')+' · Members';renderMembers();qs('#membersDialog').showModal();
+  if(!data.trips.find(x=>x.id===id))return;
+  if(id!==data.activeTripId)switchTrip(id);
+  const t=activeTripRecord();
+  qs('#membersTitle').textContent=(t?.name||'Trip')+' · Members';renderMembers();qs('#membersDialog').showModal();
 }
 function switchTripForManagement(id){
   syncActiveTripSnapshot();
@@ -419,7 +420,8 @@ function renderMembers(){
   host.querySelectorAll('[data-member-remove]').forEach(b=>b.addEventListener('click',()=>{if(!confirm('Remove this traveller from the trip?'))return;data.members=data.members.filter(x=>x.id!==b.dataset.memberRemove);save();renderMembers()}));
 }
 function manageCurrencies(id){
-  if(id!==data.activeTripId)switchTripForManagement(id);
+  if(!data.trips.find(x=>x.id===id))return;
+  if(id!==data.activeTripId)switchTrip(id);
   qs('#currenciesTitle').textContent=(activeTripRecord()?.name||'Trip')+' · Currencies';
   qs('#currenciesFields').innerHTML=`<label class="field"><span>Base currency</span><select id="baseCurrencyInput">${['MYR','THB','SGD','USD','JPY','TWD','EUR','GBP'].map(c=>`<option ${c===(data.baseCurrency||'MYR')?'selected':''}>${c}</option>`).join('')}</select></label><label class="field"><span>Enabled currencies (comma separated)</span><input id="currencyListInput" value="${esc((data.currencies||['MYR']).join(', '))}" placeholder="MYR, THB, JPY"></label>`;
   qs('#currenciesDialog').showModal();
