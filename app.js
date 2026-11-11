@@ -266,12 +266,12 @@ function moneyLabel(amount,code='MYR',digits=2){
   return `${symbols[code]||code+' '}${Number(amount||0).toFixed(code==='JPY'?0:digits)}`;
 }
 function renderMoney(){
-  const baseCurrency=data.baseCurrency||'MYR';
   const spent=data.expenses.reduce((a,x)=>a+Number(x.rmAmount??x.amount??0),0),remaining=Number(data.budget||0)-spent;
-  qs('#moneyBudget').textContent=`Budget ${moneyLabel(data.budget,baseCurrency,0)}`;
-  qs('#moneySpent').textContent=`Spent ${moneyLabel(spent,baseCurrency,0)}`;
-  qs('#moneyRemaining').textContent=moneyLabel(remaining,baseCurrency,0);
-  qs('#moneySmall').textContent=`${moneyLabel(remaining,baseCurrency,0)} left`;
+  // Stage A keeps the legacy expense ledger in MYR. Multi-currency budget conversion arrives with the Stage B ledger.
+  qs('#moneyBudget').textContent=`Budget RM ${Number(data.budget||0).toFixed(0)}`;
+  qs('#moneySpent').textContent=`Spent RM ${spent.toFixed(0)}`;
+  qs('#moneyRemaining').textContent=`RM ${remaining.toFixed(0)}`;
+  qs('#moneySmall').textContent=`RM ${remaining.toFixed(0)} left`;
   const byCategory={},byDate={};
   data.expenses.forEach(x=>{const rm=Number(x.rmAmount??x.amount??0),category=x.category||'Other',date=x.date||data.trip.start||'';byCategory[category]=(byCategory[category]||0)+rm;if(date)byDate[date]=(byDate[date]||0)+rm});
   const categories=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]),dates=Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
