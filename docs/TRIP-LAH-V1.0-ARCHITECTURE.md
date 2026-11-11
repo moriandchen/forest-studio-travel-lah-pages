@@ -30,6 +30,7 @@
 9. `trip_lah_bookings`: flight, hotel, ticket and reservation metadata. Link a booking to its payment expense to avoid duplicate money records.
 10. `trip_lah_itinerary_items`: date/time ordered itinerary entries, optionally linked to a booking.
 11. `trip_lah_settlements`: who paid whom, amount, currency and settlement status.
+12. `trip_lah_audit_logs`: immutable audit events for inserts, updates and deletes on trip, member, fund, expense, booking, itinerary and settlement records. Clients can read only their own trip logs; trigger-only writes prevent client edits.
 
 ## Financial invariants
 - Money is stored as integer minor units, never binary floating point.
