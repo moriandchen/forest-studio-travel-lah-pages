@@ -274,14 +274,28 @@ function renderPacking(){
   qsa('[data-pack-delete]').forEach(b=>b.addEventListener('click',()=>{data.packing=data.packing.filter(x=>x.id!==b.dataset.packDelete);save();toast('Packing item removed')}));
   const pct=total?Math.round(done/total*100):0;qs('#prepProgressText').textContent=pct+'%';qs('#prepProgressBar').style.width=pct+'%';
 }
-function moneyLabel(amount,code=data.baseCurrency||'MYR',digits=2){const symbols={MYR:'RM',THB:'฿',SGD:'S
+function moneyLabel(amount,code='MYR',digits=2){
+  const symbols={MYR:'RM',THB:'฿',SGD:'S$',USD:'$',JPY:'¥',TWD:'NT$',EUR:'€',GBP:'£'};
+  const places=code==='JPY'?0:digits;
+  return `${symbols[code]||code+' '}${Number(amount||0).toFixed(places)}`;
+}
+function renderMoney(){
+  const baseCurrency=data.baseCurrency||'MYR';
+  const spent=data.expenses.reduce((a,x)=>a+Number(x.rmAmount??x.amount??0),0),remaining=Number(data.budget||0)-spent;
+  qs('#moneyBudget').textContent=`Budget ${moneyLabel(data.budget,baseCurrency,0)}`;
+  qs('#moneySpent').textContent=`Spent ${moneyLabel(spent,baseCurrency,0)}`;
+  qs('#moneyRemaining').textContent=moneyLabel(remaining,baseCurrency,0);
+  qs('#moneySmall').textContent=`${moneyLabel(remaining,baseCurrency,0)} left`;
   const byCategory={},byDate={};
   data.expenses.forEach(x=>{const rm=Number(x.rmAmount??x.amount??0),category=x.category||'Other',date=x.date||data.trip.start||'';byCategory[category]=(byCategory[category]||0)+rm;if(date)byDate[date]=(byDate[date]||0)+rm});
   const categories=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
   const dates=Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
   qs('#expenseInsights').innerHTML=data.expenses.length?`<div class="insight-section"><div class="insight-heading">BY CATEGORY</div><div class="expense-category-grid">${categories.map(([name,total])=>`<div class="expense-category"><span>${esc(name)}</span><b>${moneyLabel(total,'MYR')}</b></div>`).join('')}</div></div><div class="insight-section"><div class="insight-heading">DAILY TOTALS</div><div class="daily-expense-list">${dates.map(([date,total])=>`<div><span>${esc(fmtDate(date,{day:'numeric',month:'short'}))}</span><b>${moneyLabel(total,'MYR')}</b></div>`).join('')}</div></div>`:'';
   const categoryIcons={Food:'🍜',Transport:'🚆',Shopping:'🛍️',Accommodation:'🏨',Tickets:'🎫',Other:'🧾'};
-  qs('#expenseList').innerHTML=data.expenses.slice().reverse().map(x=>{const currency=x.currency||'MYR',amount=Number(x.amount??0),rm=Number(x.rmAmount??x.amount??0),foreign=currency!=='MYR';return `<div class="expense-item"><div class="expense-main"><span class="expense-icon">${categoryIcons[x.category||'Other']||'🧾'}</span><div class="expense-copy"><b>${esc(x.name)}</b><small>${esc(x.category||'Other')} · ${esc(fmtDate(x.date||data.trip.start,{day:'numeric',month:'short'}))}</small></div></div><div class="expense-value"><b>${currency==='THB'?'฿ ':currency==='MYR'?'RM ':currency+' '}${amount.toFixed(2).replace(/\.00$/,'')}</b>${foreign?`<small>≈ RM ${rm.toFixed(2).replace(/\.00$/,'')}</small>`:''}<div class="row-actions"><button data-expense-edit="${x.id}" aria-label="Edit expense">✎</button><button class="row-delete" data-expense-delete="${x.id}" aria-label="Delete expense">×</button></div></div></div>`}).join('');
+  qs('#expenseList').innerHTML=data.expenses.slice().reverse().map(x=>{
+    const currency=x.currency||'MYR',amount=Number(x.amount??0),rm=Number(x.rmAmount??x.amount??0),foreign=currency!=='MYR';
+    return `<div class="expense-item"><div class="expense-main"><span class="expense-icon">${categoryIcons[x.category||'Other']||'🧾'}</span><div class="expense-copy"><b>${esc(x.name)}</b><small>${esc(x.category||'Other')} · ${esc(fmtDate(x.date||data.trip.start,{day:'numeric',month:'short'}))}</small></div></div><div class="expense-value"><b>${moneyLabel(amount,currency)}</b>${foreign?`<small>≈ ${moneyLabel(rm,'MYR')}</small>`:''}<div class="row-actions"><button data-expense-edit="${x.id}" aria-label="Edit expense">✎</button><button class="row-delete" data-expense-delete="${x.id}" aria-label="Delete expense">×</button></div></div></div>`;
+  }).join('');
   qs('#expenseEmpty').classList.toggle('hidden',data.expenses.length>0);
   qsa('[data-expense-edit]').forEach(b=>b.addEventListener('click',()=>openExpenseEditor(b.dataset.expenseEdit)));
   qsa('[data-expense-delete]').forEach(b=>b.addEventListener('click',()=>{data.expenses=data.expenses.filter(x=>x.id!==b.dataset.expenseDelete);save();toast('Expense removed')}));
