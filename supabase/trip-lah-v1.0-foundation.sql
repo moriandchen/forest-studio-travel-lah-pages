@@ -35,6 +35,9 @@ create table if not exists public.trip_lah_members (
   constraint trip_lah_members_id_trip_owner_unique unique (id, trip_id, owner_id)
 );
 
+create unique index if not exists trip_lah_one_owner_member_per_trip
+  on public.trip_lah_members(trip_id) where member_type = 'owner';
+
 create table if not exists public.trip_lah_currencies (
   trip_id uuid not null,
   owner_id uuid not null references auth.users(id) on delete cascade,
@@ -195,12 +198,15 @@ create table if not exists public.trip_lah_bookings (
   end_at timestamptz,
   location text not null default '',
   details text not null default '',
-  linked_expense_id uuid unique references public.trip_lah_expenses(id) on delete set null,
+  linked_expense_id uuid unique,
   attachment_path text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint trip_lah_bookings_trip_owner_fk foreign key (trip_id, owner_id)
-    references public.trip_lah_trips(id, owner_id) on delete cascade
+    references public.trip_lah_trips(id, owner_id) on delete cascade,
+  constraint trip_lah_bookings_id_trip_owner_unique unique (id, trip_id, owner_id),
+  constraint trip_lah_bookings_expense_fk foreign key (linked_expense_id, trip_id, owner_id)
+    references public.trip_lah_expenses(id, trip_id, owner_id) on delete set null (linked_expense_id)
 );
 
 create table if not exists public.trip_lah_itinerary_items (
@@ -215,12 +221,14 @@ create table if not exists public.trip_lah_itinerary_items (
   location text not null default '',
   notes text not null default '',
   sort_order integer not null default 0,
-  linked_booking_id uuid references public.trip_lah_bookings(id) on delete set null,
+  linked_booking_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint trip_lah_itinerary_trip_owner_fk foreign key (trip_id, owner_id)
     references public.trip_lah_trips(id, owner_id) on delete cascade,
-  constraint trip_lah_itinerary_time_check check (start_time is null or end_time is null or end_time >= start_time)
+  constraint trip_lah_itinerary_time_check check (start_time is null or end_time is null or end_time >= start_time),
+  constraint trip_lah_itinerary_booking_fk foreign key (linked_booking_id, trip_id, owner_id)
+    references public.trip_lah_bookings(id, trip_id, owner_id) on delete set null (linked_booking_id)
 );
 
 create table if not exists public.trip_lah_settlements (
@@ -251,6 +259,10 @@ create table if not exists public.trip_lah_settlements (
   )
 );
 
+create index if not exists trip_lah_members_owner_idx on public.trip_lah_members(owner_id, trip_id);
+create index if not exists trip_lah_currencies_owner_idx on public.trip_lah_currencies(owner_id, trip_id);
+create index if not exists trip_lah_funds_owner_idx on public.trip_lah_funds(owner_id, trip_id);
+create index if not exists trip_lah_expenses_owner_idx on public.trip_lah_expenses(owner_id, trip_id);
 create index if not exists trip_lah_trips_owner_dates_idx on public.trip_lah_trips(owner_id, start_date desc);
 create index if not exists trip_lah_members_trip_idx on public.trip_lah_members(trip_id, sort_order);
 create index if not exists trip_lah_rates_lookup_idx on public.trip_lah_exchange_rates(trip_id, from_currency_code, to_currency_code, effective_at desc);
